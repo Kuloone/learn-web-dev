@@ -1,67 +1,205 @@
-// JavaScript для страницы выбора даты и времени.
-//
-// ЗАДАНИЕ
-// ========
-// Оживить свою свёрстанную страницу. Скорее всего на ней будет работать:
-//   1. При открытии страницы выбрать день по умолчанию.
-//   2. По клику на день — день становится выбранным,
-//      слоты обновляются.
-//   3. По клику на слот — время становится выбранным,
-//      попадает в нижнюю панель.
-//   4. Стрелки «‹» и «›» листают месяцы.
-//   5. Дни раньше «сегодня» нельзя выбрать.
-//   6. Нижняя панель обновляется при выборе дня и времени.
-//
-// ГДЕ ЖИВУТ ДАННЫЕ
-// ----------------
-// Слотов пока нет с сервера. Захардкодьте массив в этом файле.
-// Формат слота: { time: "10:00", available: true }.
-// «Сегодня» можно взять из new Date() или захардкодить —
-// как удобнее для проверки.
-//
-// СТРУКТУРА КОДА
-// --------------
-// Разделите код на смысловые части комментариями:
-//   1. Данные (слоты, «сегодня»).
-//   2. Состояние (месяц, день, время, слоты).
-//   3. Чистые функции (для работы с датами).
-//   4. Отрисовка и обработчики.
-//   5. Инициализация.
-//
-// ЧИСТЫЕ ФУНКЦИИ
-// --------------
-// Если понадобится строить сетку календаря — вот функция,
-// которую можно использовать. Она не зависит от DOM,
-// просто принимает год и месяц и возвращает массив недель.
-//
-// function buildCalendarGrid(year, month) {
-//   const firstDay = new Date(year, month, 1);
-//   const lastDay = new Date(year, month + 1, 0);
-//   const daysInMonth = lastDay.getDate();
-//   const startDayOfWeek = firstDay.getDay();
-//   const offset = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
-//   const prevMonthLastDay = new Date(year, month, 0).getDate();
-//
-//   const cells = [];
-//
-//   for (let i = offset - 1; i >= 0; i--) {
-//     cells.push({ day: prevMonthLastDay - i, otherMonth: true });
-//   }
-//   for (let d = 1; d <= daysInMonth; d++) {
-//     cells.push({ day: d, otherMonth: false });
-//   }
-//   const totalCells = Math.ceil(cells.length / 7) * 7;
-//   let nextDay = 1;
-//   while (cells.length < totalCells) {
-//     cells.push({ day: nextDay, otherMonth: true });
-//     nextDay++;
-//   }
-//
-//   const weeks = [];
-//   for (let i = 0; i < cells.length; i += 7) {
-//     weeks.push(cells.slice(i, i + 7));
-//   }
-//   return weeks;
-// }
+document.addEventListener('DOMContentLoaded', () => {
 
-// Начните писать код здесь.
+    const MONTHS_NOMINATIVE = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    const MONTHS_GENITIVE = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    
+    const today = new Date(2026, 9, 10); 
+
+    function fetchSlots() {
+        return [
+            { time: "10:00", available: true },
+            { time: "11:00", available: false },
+            { time: "12:00", available: true },
+            { time: "13:00", available: false },
+            { time: "14:00", available: true },
+            { time: "15:00", available: true },
+            { time: "16:00", available: true },
+            { time: "17:00", available: true }
+        ];
+    }
+
+
+
+    const state = {
+        currentMonth: today.getMonth(),
+        currentYear: today.getFullYear(),
+        selectedDate: new Date(today),
+        selectedTime: '12:00',
+        slots: []
+    };
+
+
+
+    function buildCalendarGrid(year, month) {
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startDayOfWeek = firstDay.getDay();
+        const offset = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+        const prevMonthLastDay = new Date(year, month, 0).getDate();
+       
+        const cells = [];
+       
+        for (let i = offset - 1; i >= 0; i--) {
+            cells.push({ day: prevMonthLastDay - i, otherMonth: true, past: true });
+        }
+        for (let d = 1; d <= daysInMonth; d++) {
+            cells.push({ day: d, otherMonth: false });
+        }
+        const totalCells = Math.ceil(cells.length / 7) * 7;
+        let nextDay = 1;
+        while (cells.length < totalCells) {
+            cells.push({ day: nextDay, otherMonth: true, past: false });
+            nextDay++;
+        }
+       
+        const weeks = [];
+        for (let i = 0; i < cells.length; i += 7) {
+            weeks.push(cells.slice(i, i + 7));
+        }
+        return weeks;
+    }
+
+    function compareDates(date1, date2) {
+        const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate()).getTime();
+        const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate()).getTime();
+        if (d1 < d2) return -1;
+        if (d1 > d2) return 1;
+        return 0;
+    }
+
+    function isDateSelectable(date) {
+        return compareDates(date, today) >= 0;
+    }
+
+
+
+    const calendarGrid = document.querySelector('.calendar-grid');
+    const calendarMonthYear = document.querySelector('.calendar-header h2');
+    const arrowPrev = document.querySelectorAll('.arrow-btn')[0];
+    const arrowNext = document.querySelectorAll('.arrow-btn')[1];
+    
+    const timeGrid = document.querySelector('.time-grid');
+    const timeHeader = document.querySelector('.time-section h2');
+    const summaryDetails = document.querySelector('.summary-details');
+
+
+    function renderCalendar() {
+        calendarGrid.innerHTML = '';
+        calendarMonthYear.textContent = `${MONTHS_NOMINATIVE[state.currentMonth]} ${state.currentYear}`;
+        
+        const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+        weekDays.forEach(day => {
+            const dayEl = document.createElement('div');
+            dayEl.className = 'weekday';
+            dayEl.textContent = day;
+            calendarGrid.appendChild(dayEl);
+        });
+
+        const weeks = buildCalendarGrid(state.currentYear, state.currentMonth);
+
+        weeks.forEach(week => {
+            week.forEach(cell => {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'day';
+                dayEl.textContent = cell.day;
+
+                const cellDate = new Date(state.currentYear, state.currentMonth, cell.day);
+
+                if (cell.otherMonth || !isDateSelectable(cellDate)) {
+                    dayEl.classList.add('past');
+                    if (cell.otherMonth && !cell.past) {
+                        dayEl.textContent = ''; 
+                    }
+                } else {
+                    dayEl.addEventListener('click', () => onDayClick(cellDate));
+                    
+                    if (state.selectedDate && compareDates(cellDate, state.selectedDate) === 0) {
+                        dayEl.classList.add('selected');
+                    }
+                }
+
+                calendarGrid.appendChild(dayEl);
+            });
+        });
+    }
+
+    function renderTimeSlots() {
+        timeGrid.innerHTML = '';
+        
+        if (!state.selectedDate) return;
+
+        timeHeader.textContent = `Доступное время на ${state.selectedDate.getDate()} ${MONTHS_GENITIVE[state.selectedDate.getMonth()]}`;
+        
+        state.slots.forEach(slot => {
+            const btn = document.createElement('button');
+            btn.className = 'time-btn';
+            btn.textContent = slot.time;
+            
+            if (!slot.available) {
+                btn.classList.add('occupied');
+                const span = document.createElement('span');
+                span.textContent = 'Занято';
+                btn.appendChild(span);
+            } else {
+                if (state.selectedTime === slot.time) {
+                    btn.classList.add('selected');
+                }
+                btn.addEventListener('click', () => onTimeSlotClick(slot.time));
+            }
+            
+            timeGrid.appendChild(btn);
+        });
+    }
+
+    function updateBottomBar() {
+        if (!state.selectedDate || !state.selectedTime) {
+            summaryDetails.textContent = 'Выберите дату и время';
+            return;
+        }
+        summaryDetails.textContent = `${state.selectedDate.getDate()} ${MONTHS_GENITIVE[state.selectedDate.getMonth()]}, ${state.selectedTime}`;
+    }
+
+    function onDayClick(date) {
+        state.selectedDate = date;
+        state.selectedTime = null;
+        state.slots = fetchSlots();
+        
+        renderCalendar();
+        renderTimeSlots();
+        updateBottomBar();
+    }
+
+    function onTimeSlotClick(time) {
+        state.selectedTime = time;
+        renderTimeSlots();
+        updateBottomBar();
+    }
+
+    arrowPrev.addEventListener('click', () => {
+        state.currentMonth--;
+        if (state.currentMonth < 0) {
+            state.currentMonth = 11;
+            state.currentYear--;
+        }
+        renderCalendar();
+    });
+
+    arrowNext.addEventListener('click', () => {
+        state.currentMonth++;
+        if (state.currentMonth > 11) {
+            state.currentMonth = 0;
+            state.currentYear++;
+        }
+        renderCalendar();
+    });
+
+    function init() {
+        state.slots = fetchSlots();
+        renderCalendar();
+        renderTimeSlots();
+        updateBottomBar();
+    }
+
+    init();
+});
