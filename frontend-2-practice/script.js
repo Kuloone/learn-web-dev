@@ -3,7 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const MONTHS_NOMINATIVE = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
     const MONTHS_GENITIVE = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
     
-    const today = new Date(2026, 9, 10); 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     function fetchSlots() {
         return [
@@ -18,17 +19,13 @@ document.addEventListener('DOMContentLoaded', () => {
         ];
     }
 
-
-
     const state = {
         currentMonth: today.getMonth(),
         currentYear: today.getFullYear(),
         selectedDate: new Date(today),
-        selectedTime: '12:00',
+        selectedTime: null,
         slots: []
     };
-
-
 
     function buildCalendarGrid(year, month) {
         const firstDay = new Date(year, month, 1);
@@ -72,8 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return compareDates(date, today) >= 0;
     }
 
-
-
     const calendarGrid = document.querySelector('.calendar-grid');
     const calendarMonthYear = document.querySelector('.calendar-header h2');
     const arrowPrev = document.querySelectorAll('.arrow-btn')[0];
@@ -82,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const timeGrid = document.querySelector('.time-grid');
     const timeHeader = document.querySelector('.time-section h2');
     const summaryDetails = document.querySelector('.summary-details');
-
+    const primaryBtn = document.querySelector('.primary-btn');
 
     function renderCalendar() {
         calendarGrid.innerHTML = '';
@@ -127,7 +122,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderTimeSlots() {
         timeGrid.innerHTML = '';
         
-        if (!state.selectedDate) return;
+        if (!state.selectedDate) {
+            timeHeader.textContent = 'Выберите дату в календаре';
+            return;
+        }
 
         timeHeader.textContent = `Доступное время на ${state.selectedDate.getDate()} ${MONTHS_GENITIVE[state.selectedDate.getMonth()]}`;
         
@@ -138,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (!slot.available) {
                 btn.classList.add('occupied');
+                btn.disabled = true;
                 const span = document.createElement('span');
                 span.textContent = 'Занято';
                 btn.appendChild(span);
@@ -160,20 +159,30 @@ document.addEventListener('DOMContentLoaded', () => {
         summaryDetails.textContent = `${state.selectedDate.getDate()} ${MONTHS_GENITIVE[state.selectedDate.getMonth()]}, ${state.selectedTime}`;
     }
 
+    function updateButtonState() {
+        if (state.selectedDate && state.selectedTime) {
+            primaryBtn.disabled = false;
+        } else {
+            primaryBtn.disabled = true;
+        }
+    }
+
     function onDayClick(date) {
         state.selectedDate = date;
-        state.selectedTime = null;
+        state.selectedTime = null; 
         state.slots = fetchSlots();
         
         renderCalendar();
         renderTimeSlots();
         updateBottomBar();
+        updateButtonState(); 
     }
 
     function onTimeSlotClick(time) {
         state.selectedTime = time;
         renderTimeSlots();
         updateBottomBar();
+        updateButtonState(); 
     }
 
     arrowPrev.addEventListener('click', () => {
@@ -182,7 +191,12 @@ document.addEventListener('DOMContentLoaded', () => {
             state.currentMonth = 11;
             state.currentYear--;
         }
+        state.selectedDate = null;
+        state.selectedTime = null;
         renderCalendar();
+        renderTimeSlots();
+        updateBottomBar();
+        updateButtonState();
     });
 
     arrowNext.addEventListener('click', () => {
@@ -191,7 +205,18 @@ document.addEventListener('DOMContentLoaded', () => {
             state.currentMonth = 0;
             state.currentYear++;
         }
+        state.selectedDate = null;
+        state.selectedTime = null;
         renderCalendar();
+        renderTimeSlots();
+        updateBottomBar();
+        updateButtonState();
+    });
+
+    primaryBtn.addEventListener('click', () => {
+        if (!primaryBtn.disabled) {
+            alert(`Успешно! Вы записаны на ${state.selectedDate.getDate()} ${MONTHS_GENITIVE[state.selectedDate.getMonth()]} в ${state.selectedTime}. (Переход на следующий экран)`);
+        }
     });
 
     function init() {
@@ -199,6 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCalendar();
         renderTimeSlots();
         updateBottomBar();
+        updateButtonState();
     }
 
     init();

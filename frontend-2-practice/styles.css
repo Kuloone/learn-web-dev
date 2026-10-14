@@ -334,6 +334,13 @@ body {
     opacity: 0.8;
 }
 
+.primary-btn:disabled {
+    background-color: var(--border);
+    color: var(--text-gray);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
 .footer {
     background-color: var(--footer-bg);
     color: white;
